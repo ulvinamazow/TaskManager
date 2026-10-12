@@ -8,6 +8,7 @@ import (
 
 	"github.com/ulvinamazow/taskManager/model"
 	"github.com/ulvinamazow/taskManager/service"
+	"github.com/ulvinamazow/taskManager/storage"
 )
 
 func printTasks(tasks []model.Task) {
@@ -49,7 +50,9 @@ func main() {
 
 	command := os.Args[1]
 
-	service, err := service.NewService()
+	fileStorage := storage.NewFileStorage("tasks.json")
+
+	service, err := service.New(fileStorage)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return

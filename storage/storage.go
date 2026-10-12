@@ -8,24 +8,30 @@ import (
 	"github.com/ulvinamazow/taskManager/model"
 )
 
-const TasksFile = "tasks.json"
+type FileStorage struct {
+	path string
+}
 
-func Save(tasks []model.Task) error {
+func NewFileStorage(path string) *FileStorage {
+	return &FileStorage{path: path}
+}
 
-	jsonStr, err := tasksToJSON(tasks)
+func (fs *FileStorage) Save(tasks []model.Task) error {
+
+	jsonStr, err := fs.toJSON(tasks)
 	if err != nil {
 		return fmt.Errorf("JSON creating error: %w", err)
 	}
 
-	if err := os.WriteFile(TasksFile, []byte(jsonStr), 0644); err != nil {
+	if err := os.WriteFile(fs.path, []byte(jsonStr), 0644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
 
 	return nil
 }
 
-func Load() ([]model.Task, error) {
-	data, err := os.ReadFile(TasksFile)
+func (fs *FileStorage) Load() ([]model.Task, error) {
+	data, err := os.ReadFile(fs.path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []model.Task{}, nil
@@ -45,14 +51,14 @@ func Load() ([]model.Task, error) {
 	return tasks, nil
 }
 
-func tasksToJSON(tasks []model.Task) (string, error) {
+func (fs *FileStorage) toJSON(tasks []model.Task) (string, error) {
 	data, err := json.MarshalIndent(tasks, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("Error converting to JSON: %w", err)
+		return "", fmt.Errorf("Json conversion error: %w", err)
 	}
 	return string(data), nil
 }
 
-func ToJSON(tasks []model.Task) (string, error) {
-	return tasksToJSON(tasks)
+func (fs *FileStorage) ToJSON(tasks []model.Task) (string, error) {
+	return fs.toJSON(tasks)
 }

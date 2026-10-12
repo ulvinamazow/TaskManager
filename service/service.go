@@ -5,20 +5,29 @@ import (
 	"fmt"
 
 	"github.com/ulvinamazow/taskManager/model"
-	"github.com/ulvinamazow/taskManager/storage"
 )
 
-type Service struct {
-	tasks []model.Task
+type Storage interface {
+	Save(tasks []model.Task) error
+	Load() ([]model.Task, error)
+	ToJSON(tasks []model.Task) (string, error)
 }
 
-func NewService() (*Service, error) {
+type Service struct {
+	storage Storage
+	tasks   []model.Task
+}
+
+func New(storage Storage) (*Service, error) {
 	tasks, err := storage.Load()
 	if err != nil {
 		return nil, fmt.Errorf("service can not created: %w", err)
 	}
 
-	return &Service{tasks: tasks}, nil
+	return &Service{
+		storage: storage,
+		tasks:   tasks,
+	}, nil
 }
 
 func (service *Service) Add(title string) error {
@@ -28,24 +37,32 @@ func (service *Service) Add(title string) error {
 
 	nextID := 0
 
+	for _, t := range service.tasks {
+		if t.ID > nextID {
+			nextID = t.ID
+		}
+	}
+	nextID++
+
 	newTask := model.Task{
 		ID:        nextID,
 		Title:     title,
 		Completed: false,
 	}
+
 	service.tasks = append(service.tasks, newTask)
 
-	if err := storage.Save(service.tasks); err != nil {
+	if err := service.storage.Save(service.tasks); err != nil {
 		return fmt.Errorf("The task could not be saved: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) Complete(id int) error {
-	for i, t := range s.tasks {
+func (service *Service) Complete(id int) error {
+	for i, t := range service.tasks {
 		if t.ID == id {
-			s.tasks[i].Completed = true
-			if err := storage.Save(s.tasks); err != nil {
+			service.tasks[i].Completed = true
+			if err := service.storage.Save(service.tasks); err != nil {
 				return fmt.Errorf("The task could not be saved: %w", err)
 			}
 			return nil
@@ -54,12 +71,12 @@ func (s *Service) Complete(id int) error {
 	return fmt.Errorf("Task with ID=%d was not found", id)
 }
 
-func (s *Service) Delete(id int) error {
-	for i, t := range s.tasks {
+func (service *Service) Delete(id int) error {
+	for i, t := range service.tasks {
 		if t.ID == id {
 			// Slice-dan çıxar.
-			s.tasks = append(s.tasks[:i], s.tasks[i+1:]...)
-			if err := storage.Save(s.tasks); err != nil {
+			service.tasks = append(service.tasks[:i], service.tasks[i+1:]...)
+			if err := service.storage.Save(service.tasks); err != nil {
 				return fmt.Errorf("The task could not be saved: %w", err)
 			}
 			return nil
@@ -68,10 +85,10 @@ func (s *Service) Delete(id int) error {
 	return fmt.Errorf("Task with ID=%d was not found", id)
 }
 
-func (s *Service) List() []model.Task {
-	return s.tasks
+func (service *Service) List() []model.Task {
+	return service.tasks
 }
 
-func (s *Service) ToJSON() (string, error) {
-	return storage.ToJSON(s.tasks)
+func (service *Service) ToJSON() (string, error) {
+	return service.storage.ToJSON(service.tasks)
 }
